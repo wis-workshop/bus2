@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bus Boarding Dashboard V8 Fixed</title>
+<style>
+body{margin:0;font-family:Segoe UI,Arial,sans-serif;background:#0f172a;color:#fff}
+.header{background:#1e293b;padding:20px;position:sticky;top:0}
+input{width:100%;padding:14px;font-size:20px;border-radius:10px;border:none;box-sizing:border-box}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:15px;padding:15px}
+.bus{padding:12px;border-radius:14px;color:#fff}
+.destination,.student{background:rgba(255,255,255,.15);padding:8px;border-radius:8px;margin:5px 0}
+button{padding:10px 14px;border:none;border-radius:8px;color:#fff;font-weight:bold;margin:3px;cursor:pointer}
+.red{background:#dc2626}.green{background:#16a34a}.blue{background:#2563eb}.orange{background:#ea580c}
+</style>
+</head>
+<body>
+<div class="header">
+<h1>Waimea Intermediate Daily Bus Boarding</h1>
+<input id="scan" placeholder="Ready for QR scanning...">
+<div id="status">Ready</div>
+<div>Total: <span id="total">0</span> | Last: <span id="last">None</span></div>
+<button class="red" onclick="resetData()">Reset</button>
+<button class="green" onclick="exportCSV()">CSV</button>
+<button class="blue" onclick="exportCSV()">Excel</button>
+<button class="orange" onclick="window.print()">Print</button>
+</div>
+<div id="grid" class="grid"></div>
+<script>
+var buses={"403":"Pigeon Valley","404":"Wairoa - Lee","421":"Bus 421","423":"Aniseed Valley","424":"Redwood Vly - Best Is","425":"Wakefield Village Hall","426":"Ranzau - Landsdowne","427":"Waimea West","428":"Wakefield Pitfure Rd - Brightwater","429":"Hiwipango & Hope","432":"88 Valley","434":"Belgrove","436":"Brightwater"};
+var colors=['#2563eb','#16a34a','#ea580c','#9333ea','#0d9488','#dc2626','#4f46e5','#d97706'];
+var records=JSON.parse(localStorage.getItem('busRecords')||'[]');
+var unknown=JSON.parse(localStorage.getItem('unknownRecords')||'[]');
+var scanned={};
+var grid=document.getElementById('grid');
+function build(){
+grid.innerHTML='';
+var i=0;
+for(var bus in buses){
+ var c=document.createElement('div');
+ c.className='bus';
+ c.style.background=colors[i%colors.length];
+ c.innerHTML='<h2>'+bus+' (<span id="count-'+bus+'">0</span>)</h2><div class="destination">'+buses[bus]+'</div><div id="bus-'+bus+'"></div>';
+ grid.appendChild(c); i++; }
+ var u=document.createElement('div');
+ u.className='bus'; u.style.background='#7f1d1d';
+ u.innerHTML='<h2>Unknown Scans (<span id="count-unknown">0</span>)</h2><div class="destination">Invalid scans</div><div id="bus-unknown"></div>';
+ grid.appendChild(u);
+ records.forEach(showRecord); unknown.forEach(showUnknown); updateCounts(); }
+function showRecord(r){ scanned[r.name+r.bus]=true; var b=document.getElementById('bus-'+r.bus); if(!b)return; var d=document.createElement('div'); d.className='student'; d.innerHTML='<b>'+r.name+'</b><br>'+r.time; b.prepend(d);} 
+function showUnknown(r){ var b=document.getElementById('bus-unknown'); var d=document.createElement('div'); d.className='student'; d.textContent=r.raw+' | '+r.time; b.prepend(d);} 
+function updateCounts(){ document.getElementById('total').textContent=records.length; for(var b in buses){ document.getElementById('count-'+b).textContent=document.getElementById('bus-'+b).children.length; } document.getElementById('count-unknown').textContent=document.getElementById('bus-unknown').children.length; }
+function save(){ localStorage.setItem('busRecords',JSON.stringify(records)); localStorage.setItem('unknownRecords',JSON.stringify(unknown)); }
+document.getElementById('scan').addEventListener('keydown',function(e){ if(e.key!=='Enter')return; var v=this.value.trim(); this.value=''; var bus=v.slice(-3); var name=v.slice(0,-3).trim(); if(!buses[bus]||name===''){ var u={raw:v,time:new Date().toLocaleString()}; unknown.push(u); save(); showUnknown(u); updateCounts(); return; } if(scanned[name+bus]) return; var r={name:name,bus:bus,time:new Date().toLocaleString()}; records.push(r); save(); showRecord(r); updateCounts(); document.getElementById('last').textContent=name+' -> '+bus; });
+function resetData(){ if(confirm('Remove all scans?')){ localStorage.removeItem('busRecords'); localStorage.removeItem('unknownRecords'); location.reload(); } }
+function exportCSV(){ var csv='Name,Bus,Time\n'; records.forEach(function(r){ csv += '"'+r.name+'",'+r.bus+',"'+r.time+'"\n'; }); unknown.forEach(function(r){ csv += '"'+r.raw+'",UNKNOWN,"'+r.time+'"\n'; }); var a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'})); a.download='BusBoardingDashboard_V8_Fixed.csv'; a.click(); }
+build();
+</script>
+</body>
+</html>
